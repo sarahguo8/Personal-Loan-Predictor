@@ -1,0 +1,778 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+save.image()
+getwd()
+setwd('C:/Users/sarah/Duke/Fall 1/Customer Relationship Management/project')
+getwd()
+
+```
+
+```{r}
+
+source("DataAnalyticsFunctions.R")
+source("PerformanceCurves.R")
+
+```
+
+```{r}
+
+options(warn=-1)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(corrplot)
+library(wordcloud)
+library(RColorBrewer)
+library(wordcloud2)
+library(tm)
+library(SnowballC)
+library(glmnet)
+library(tidyr)
+library(tree)
+library(stringr)
+library(knitr)
+library(tidyverse)
+library(data.table)
+library(DT)
+library(ggplot2)
+library(GGally)
+
+
+```
+
+```{r}
+
+bank_loan_data <- read.csv("Bank_Personal_Loan_Modelling.csv")
+bank_loan_data$Experience <- abs(bank_loan_data$Experience)
+
+data <- bank_loan_data
+str(data)
+summary(data)
+
+colSums(is.na(data))
+
+```
+
+```{r}
+
+colnames(data)
+str(data)
+
+hist(data$Age)
+hist(data$Experience)
+hist(data$Income)
+hist(data$CCAvg)
+hist(data$Education)
+hist(data$Mortgage)
+hist(data$Personal_Loan)
+hist(data$Securities_Account)
+hist(data$CD_Account)
+hist(data$Online)
+hist(data$CreditCard)
+
+boxplot(data$Age)
+boxplot(data$Experience)
+boxplot(data$Income)
+boxplot(data$CCAvg)
+boxplot(data$Education)
+boxplot(data$Mortgage)
+boxplot(data$Personal_Loan)
+boxplot(data$Securities_Account)
+boxplot(data$CD_Account)
+boxplot(data$Online)
+boxplot(data$CreditCard)
+
+```
+
+```{r}
+
+str(data)
+temp <- data %>%  select(-c(ID, ZIP_Code, County, Region))
+str(temp)
+
+corrplot(cor(temp), 
+         method = 'shade', 
+         order = "AOE",
+         diag = FALSE,
+         type = "lower",
+         addCoef.col = 1, 
+         number.cex = 1, 
+         tl.cex = 0.75)
+
+```
+
+```{r}
+
+str(data)
+
+ggplot(data, aes(x = Income , y = CCAvg)) + 
+  geom_point(size = 1 , color = "blue") +
+  geom_smooth(linetype = "dashed", colour = "red") +
+  labs(title = "Relationship between Income and CCAvg")
+
+
+
+ggplot(data, aes(x = Age, y = Experience)) + 
+  geom_point(size = 1 , color = "blue") +
+  geom_smooth(linetype = "dashed", colour = "red") +
+  labs(title = "Relationship between Age and Experience")
+
+
+
+
+```
+
+```{r}
+
+str(data)
+
+temp <- data %>%  select(c(Age, Experience, Income, CCAvg, Mortgage))
+ggpairs(temp)
+
+
+```
+
+
+```{r}
+
+str(data)
+
+data$Personal_Loan <- as.factor(data$Personal_Loan)
+data$Securities_Account <- as.factor(data$Securities_Account)
+data$CD_Account <- as.factor(data$CD_Account)
+data$Online <- as.factor(data$Online)
+data$CreditCard <- as.factor(data$CreditCard)
+data$County <- as.factor(data$County)
+data$Region <- as.factor(data$Region)
+data$Education <- as.factor(data$Education)
+
+str(data)
+
+
+## Personal Loan Summaries
+df_personal_loan <- data %>% 
+  group_by(Personal_Loan) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data)*100)
+
+
+ggplot(df_personal_loan, aes(x = Personal_Loan, y = perc)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  labs(x = "Personal Loan", y = "Percentage of Customers", title = "Distribution of Customers by Personal Loan")
+
+
+
+##Education Level Summaries
+df_education <- data %>% 
+  group_by(Education) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data))
+
+
+ggplot(df_education, aes(x = Education, y = perc)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  ylim(0,1) +
+  geom_text(aes(label = perc), vjust = 1.6, color = "white", size = 4) + 
+  labs(x = "Education", y = "Percentage of Customers", title = "Distribution of Customers by Education")
+
+
+
+##Family Level Summaries
+df_family <- data %>% 
+  group_by(Family) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data))
+
+
+ggplot(df_family, aes(x = Family, y = perc)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  ylim(0,1) +
+  geom_text(aes(label = perc), vjust = 1.6, color = "white", size = 4) + 
+  labs(x = "Family Size", y = "Percentage of Customers", title = "Distribution of Customers by Family Members")
+
+
+
+##Region Level Summaries
+df_region <- data %>% 
+  group_by(Region) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data))
+
+
+ggplot(df_region, aes(x = Region, y = n)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  ylim(0,2000) +
+  geom_text(aes(label = n), vjust = 1.6, color = "white", size = 4) + 
+  labs(x = "Region", y = "Number of Customers", title = "Distribution of Customers by Regions")
+
+## Credit card
+df_cc <- data %>% 
+  group_by(CreditCard) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data))
+
+
+ggplot(df_cc, aes(x = CreditCard, y = perc)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  ylim(0,1) +
+  geom_text(aes(label = perc), vjust = 1.6, color = "white", size = 4) + 
+  labs(x = "Credit Card", y = "Percentage of Customers", title = "Distribution of Customers by Credit Card Ownership")
+
+## Securities
+df_securities <- data %>% 
+  group_by(Securities_Account) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data))
+
+
+ggplot(df_securities, aes(x = Securities_Account, y = perc)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  ylim(0,1) +
+  geom_text(aes(label = perc), vjust = 1.6, color = "white", size = 4) + 
+  labs(x = "Securities Account", y = "Percentage of Customers", title = "Distribution of Customers by Security Account Ownership")
+
+
+## CD
+df_cd <- data %>% 
+  group_by(CD_Account) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data))
+
+
+ggplot(df_cd, aes(x = CD_Account, y = perc)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  ylim(0,1) +
+  geom_text(aes(label = perc), vjust = 1.6, color = "white", size = 4) + 
+  labs(x = "CD Account", y = "Percentage of Customers", title = "Distribution of Customers by CD Account Ownership")
+
+## Online
+df_online <- data %>% 
+  group_by(Online) %>% 
+  summarise(n = n(),
+            perc = n()/nrow(data))
+
+
+ggplot(df_online, aes(x = Online, y = perc)) +
+  geom_bar(stat = "identity", fill="steelblue") + 
+  theme_bw() + 
+  ylim(0,1) +
+  geom_text(aes(label = perc), vjust = 1.6, color = "white", size = 4) + 
+  labs(x = "Online", y = "Percentage of Customers", title = "Distribution of Customers by Online Banking")
+
+```
+
+
+
+```{r}
+
+## K means clustering
+library(factoextra)
+library(cluster)
+
+str(data)
+str(bank_loan_data)
+
+data_cluster <- bank_loan_data %>%  
+  select(c(Age, Experience, Income, Family, CCAvg, Mortgage, Education))
+
+str(data_cluster)
+data_cluster <- scale(data_cluster)
+str(data_cluster)
+
+fviz_nbclust(data_cluster, kmeans, method = "wss")
+## 3 clusters
+
+#make this example reproducible
+set.seed(1)
+
+#perform k-means clustering with k = 4 and 3 clusterclusters
+km <- kmeans(data_cluster, centers = 3, nstart = 25)
+summary(km)
+km$cluster
+
+### cluster_analysis
+cluster_1_features <- as.data.frame(km$centers[1,])
+cluster_2_features <- as.data.frame(km$centers[2,])
+cluster_3_features <- as.data.frame(km$centers[3,])
+
+### Sizes of clusters
+km$size
+### variation explained with 4 clusters
+1 - km$tot.withinss/ km$totss
+
+### near 33%
+
+fviz_cluster(km, data = data_cluster, 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw())
+
+
+```
+
+```{r}
+
+str(data)
+pca_data <- data %>%  select(c(Age, Experience, Income, Family, CCAvg, Mortgage, Education))
+pca_data$Education <- as.numeric(pca_data$Education) 
+str(pca_data)
+# PCA using prcomp() -----------------------------------------------------------
+pca <- prcomp(pca_data, scale. = T, center = T) # Perform PCA
+summary(pca)
+
+
+# Percentage of variance explained by dimensions
+eigenvalue <- round(get_eigenvalue(pca), 1)
+variance.percent <- eigenvalue$variance.percent
+head(eigenvalue)
+
+plot(eigenvalue$cumulative.variance.percent)
+plot(eigenvalue$variance.percent)
+
+####
+#### Loading 1
+loadings <- pca$rotation[,1:5]
+v<-loadings[order(abs(loadings[,1]), decreasing=TRUE)[1:ncol(pca_data)],1]
+loadingfit <- lapply(1:ncol(pca_data), function(k) ( t(v[1:k])%*%v[1:k] - 1 )^2)
+v[1:which.min(loadingfit)]
+
+####
+#### Loading 2
+v<-loadings[order(abs(loadings[,2]), decreasing=TRUE)[1:ncol(pca_data)],2]
+loadingfit <- lapply(1:ncol(pca_data), function(k) ( t(v[1:k])%*%v[1:k] - 1 )^2)
+v[1:which.min(loadingfit)]
+
+####
+#### Loading 3
+v<-loadings[order(abs(loadings[,3]), decreasing=TRUE)[1:ncol(pca_data)],3]
+loadingfit <- lapply(1:ncol(pca_data), function(k) ( t(v[1:k])%*%v[1:k] - 1 )^2)
+v[3:which.min(loadingfit)]
+
+####
+#### Loading 4
+v<-loadings[order(abs(loadings[,4]), decreasing=TRUE)[1:ncol(pca_data)],3]
+loadingfit <- lapply(1:ncol(pca_data), function(k) ( t(v[1:k])%*%v[1:k] - 1 )^2)
+v[4:which.min(loadingfit)]
+
+####
+#### Loading 5
+v<-loadings[order(abs(loadings[,5]), decreasing=TRUE)[1:ncol(pca_data)],3]
+loadingfit <- lapply(1:ncol(pca_data), function(k) ( t(v[1:k])%*%v[1:k] - 1 )^2)
+v[5:which.min(loadingfit)]
+
+
+loadings
+
+write.csv(loadings, file = "bank_loan_pca_loadings.csv", row.names = TRUE, col.names = FALSE)
+
+##PCA Analysis
+# Manipulate data for PCA Analyis ----------------------------------------------
+library(ggfortify) # For fortify()
+pca.fortify <- fortify(pca) # fortify() gets pca into usable format
+
+# Add group (short for color) column using k=4 and k=5 groups
+pca.data <- cbind(pca.fortify, group=km$cluster)
+
+write.csv(pca.data, file = "bank_loan_pca_data.csv")
+
+```
+
+```{r}
+
+##Visualizations of clusters with Original Variables
+str(pca.data)
+pca.data$group <- as.factor(pca.data$group)
+colnames(pca.data)
+
+ggplot(pca.data, aes(x = group, y = Age, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Age", title = "Relationship between Group and Age")
+
+
+
+ggplot(pca.data, aes(x = group, y = Income, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Income", title = "Relationship between Group and Income")
+
+
+
+ggplot(pca.data, aes(x = group, y = Family, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Family", title = "Relationship between Group and Family")
+
+
+ggplot(pca.data, aes(x = group, y = Mortgage, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Mortgage", title = "Relationship between Group and Mortgage")
+
+
+
+ggplot(pca.data, aes(x = group, y = CCAvg, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "CCAvg", title = "Relationship between Group and CCAvg")
+
+
+
+ggplot(pca.data, aes(x = group, y = Education, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Education", title = "Relationship between Group and Education")
+
+ggplot(pca.data, aes(x = group, y = Experience, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Experience", title = "Relationship between Group and Experience")
+```
+
+
+```{r}
+
+str(pca.data)
+
+
+ggplot(pca.data, aes(x = group, y = PC1, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Principal Component 1", title = "Relationship between Group and PC1")
+
+
+
+
+ggplot(pca.data, aes(x = group, y = PC2, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Principal Component 2", title = "Relationship between Group and PC2")
+
+
+
+ggplot(pca.data, aes(x = group, y = PC3, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Principal Component 3", title = "Relationship between Group and PC3")
+
+
+
+ggplot(pca.data, aes(x = group, y = PC4, color = group)) + 
+  geom_boxplot(outlier.color = "black") + 
+  theme_bw() + 
+  labs(x = "Group", y = "Principal Component 4", title = "Relationship between Group and PC4")
+
+
+
+```
+
+
+```{r}
+## Supervised Machine Learning
+## Logistic Regression Model
+
+str(bank_loan_data)
+str(data)
+
+data <- bank_loan_data %>% select(-c(ID, Experience, ZIP_Code, County))
+
+data <- data %>% 
+  mutate(Education_1 = if_else(Education == 1, 1, 0),
+         Education_2 = if_else(Education == 2, 1, 0),
+         Region_Bay = if_else(Region == "Bay Area", 1, 0),
+         Region_Central = if_else(Region == "Central", 1, 0),
+         Region_LA = if_else(Region == "Los Angeles", 1, 0),
+         Region_Southern = if_else(Region == "Southern", 1, 0))
+
+str(data)
+data <- data %>% select(-c(Education, Region))
+data$Personal_Loan <- if_else(data$Personal_Loan == 1, "Yes", "No")
+str(data)
+
+```
+
+
+```{r}
+
+temp <- data %>%  select(-c(Personal_Loan))
+str(temp)
+
+corrplot(cor(temp), 
+         method = 'shade', 
+         order = "AOE",
+         diag = FALSE,
+         type = "lower",
+         addCoef.col = 1, 
+         number.cex = 1, 
+         tl.cex = 0.75)
+
+```
+
+
+
+```{r}
+
+
+library(caTools)
+set.seed(1)
+
+#use 70% of dataset as training set and 30% as test set
+sample <- sample.split(data$Personal_Loan, SplitRatio = 0.7)
+train  <- subset(data, sample == TRUE)
+test   <- subset(data, sample == FALSE)
+
+
+train_X <- train %>% select(-c(Personal_Loan))
+train_X <- as.data.frame(scale(train_X))
+train_Y <- train %>%  select(c(Personal_Loan))
+
+
+test_X <- test %>% select(-c(Personal_Loan))
+test_X <- as.data.frame(scale(test_X))
+test_Y <- test %>% select(c(Personal_Loan))
+
+
+nrow(train_X)
+mean(train_Y == "Yes")
+nrow(test_X)
+mean(test_Y == "Yes")
+
+
+##Building Models for Personal_Loan using train data
+model.logistic.interaction <-glm(train_Y == "Yes" ~ .^2, data = train_X,  family = "binomial")
+model.logistic.lasso <-glm(train_Y == "Yes" ~ 
+                             Income + CD_Account + Age*Income + Age*CD_Account + Income*Family + Income*CD_Account +
+                             Income*Education_1 + Family*CCAvg + CCAvg*Education_1 + CCAvg*Education_2 + Online*CreditCard, 
+                           data = train_X,  family = "binomial")
+model.logistic <-glm(train_Y == "Yes" ~ ., data = train_X, family = "binomial")
+model.null <- glm(train_Y == "Yes" ~ 1, data = train_X, family="binomial")
+
+    
+```
+
+
+```{r}
+
+##Predicting on Training Set
+## get predictions: type=response so we have probabilities
+pred.logistic.interaction_train <- predict(model.logistic.interaction, newdata = train_X, type = "response")
+pred.logistic.lasso_train <- predict(model.logistic.lasso, newdata = train_X, type = "response")
+pred.logistic_train             <- predict(model.logistic, newdata = train_X, type = "response")
+pred.null_train                 <- predict(model.null, newdata = train_X, type = "response")
+
+
+## get predictions: type=response so we have probabilities
+pred.logistic.interaction_train <- if_else(pred.logistic.interaction_train >= 0.5, 1, 0)
+pred.logistic.lasso_train       <- if_else(pred.logistic.lasso_train >= 0.5, 1, 0)
+pred.logistic_train             <- if_else(pred.logistic_train >= 0.5, 1, 0)
+pred.null_train                 <- if_else(pred.null_train >= 0.5, 1, 0)
+
+
+## Getting confusion matrix for train set
+performance50_interaction_train <- FPR_TPR(pred.logistic.interaction_train, train_Y == "Yes")
+performance50_lasso_train <- FPR_TPR(pred.logistic.lasso_train, train_Y == "Yes")
+performance50_logistic_train <- FPR_TPR(pred.logistic_train, train_Y == "Yes")
+performance50_null_train <- FPR_TPR(pred.null_train, train_Y == "Yes")
+
+
+```
+
+
+```{r}
+
+## Predicting on Test Set
+## get predictions: type=response so we have probabilities
+pred.logistic.interaction <- predict(model.logistic.interaction, newdata = test_X, type = "response")
+pred.logistic.lasso       <- predict(model.logistic.lasso, newdata = test_X, type = "response")
+pred.logistic             <- predict(model.logistic, newdata = test_X, type = "response")
+pred.null                 <- predict(model.null, newdata = test_X, type = "response")
+
+
+
+## get predictions: type=response so we have probabilities
+pred.logistic.interaction <- if_else(pred.logistic.interaction >= 0.5, 1, 0)
+pred.logistic.lasso <- if_else(pred.logistic.lasso >= 0.5, 1, 0)
+pred.logistic             <- if_else(pred.logistic >= 0.5, 1, 0)
+pred.null                 <- if_else(pred.null >= 0.5, 1, 0)
+
+
+
+## Getting confusion matrix for test set
+performance50_interaction <- FPR_TPR(pred.logistic.interaction, test_Y == "Yes")
+performance50_lasso <- FPR_TPR(pred.logistic.lasso, test_Y == "Yes")
+performance50_logistic <- FPR_TPR(pred.logistic, test_Y == "Yes")
+performance50_null <- FPR_TPR(pred.null, test_Y == "Yes")
+
+```
+```{r}
+
+
+## COmparing confusion matrix for all
+performance <- rbind("all_interactions_test" = performance50_interaction, 
+                     "all_interactions_train" = performance50_interaction_train,
+                     "lasso_interactions_test" = performance50_lasso,
+                     "lasso_interactions_train" = performance50_lasso_train,
+                     "logistic_test" = performance50_logistic,
+                     "logistic_train" = performance50_logistic_train)
+performance
+
+write.csv(performance, file = "performance.csv", row.names = TRUE)
+
+```
+
+
+
+```{r}
+
+## Final ROC plot
+##Model evaluation
+PerformanceMeasure <- function(actual, prediction, threshold=.5) {
+  1-mean(abs( (prediction- actual) ) )  
+}
+
+
+PerformanceMeasure2 <- function(actual, prediction, threshold=.5) {
+  R2(y=actual, pred=prediction, family="binomial")
+}
+
+
+
+##Model Accuracy
+OOS.Accuracy <- data.frame(logistic.interaction=NA, logistic.lasso=NA, logistic=NA, null=NA)
+
+OOS.Accuracy$logistic.interaction <- PerformanceMeasure(actual = test_Y == "Yes", pred = pred.logistic.interaction)
+OOS.Accuracy$logistic.lasso <- PerformanceMeasure(actual = test_Y == "Yes", pred = pred.logistic.lasso)
+OOS.Accuracy$logistic <- PerformanceMeasure(actual = test_Y == "Yes", pred = pred.logistic)
+OOS.Accuracy$null <- 0.50
+OOS.Accuracy
+
+
+
+## Model R-Sqaured
+OOS.R2 <- data.frame(logistic.interaction=NA, logistic.lasso = NA, logistic=NA, null=NA) 
+
+OOS.R2$logistic.interaction <- R2(y = test_Y == "Yes", pred = pred.logistic.interaction)
+OOS.R2$logistic.lasso <- R2(y = test_Y == "Yes", pred = pred.logistic.lasso)
+OOS.R2$logistic <- R2(y = test_Y == "Yes", pred = pred.logistic)
+OOS.R2$null <- 0
+OOS.R2
+
+
+
+```
+
+```{r}
+
+
+
+## Final Model on the whole data
+final_data_X <- rbind(train_X, test_X)
+final_data_Y <- rbind(train_Y, test_Y)
+
+final_model_1 <- glm(final_data_Y == "Yes" ~ ., data = final_data_X, family = "binomial")
+summary(final_model_1)
+final_pred_1  <- predict(final_model_1, newdata = final_data_X, type = "response")
+
+
+
+
+final_model_2 <- glm(final_data_Y == "Yes" ~ 
+                       Income + CD_Account + Age*Income + Age*CD_Account + Income*Family + Income*CD_Account +              
+                       Income*Education_1 + Family*CCAvg + CCAvg*Education_1 + CCAvg*Education_2 + Online*CreditCard, 
+                     data = final_data_X, family = "binomial")
+summary(final_model_2)
+final_pred_2  <- predict(final_model_2, newdata = final_data_X, type = "response")
+
+
+
+## Plotting ROC Curves
+str(data)
+
+roccurve <-  roc(p = final_pred_1, y = final_data_Y == "Yes" , bty="n")
+roccurve_final_1 <- roccurve
+
+roccurve <-  roc(p = final_pred_2, y = final_data_Y == "Yes" , bty="n")
+roccurve_final_2 <- roccurve
+
+ggplot() + 
+  geom_line(data = roccurve_final_1,
+            aes(y = sensitivity, x = V1, colour = "Logistic Regression"),
+            size = 1) +
+    geom_line(data = roccurve_final_2,
+            aes(y = sensitivity, x = V1, colour = "Logistic Regression with Interactions"),
+            size = 1) +
+  scale_color_manual(name = "Model", 
+                     values = c("Logistic Regression" = "darkgreen",
+                                "Logistic Regression with Interactions" = "blue")) +
+  labs(title = "ROC", x = "False Positive Rate", y = "True Postive Rate")
+
+
+```
+
+
+```{r}
+
+model.logistic <-glm(train_Y == "Yes" ~ ., data = train_X, family = "binomial")
+pred.logistic             <- predict(model.logistic, newdata = test_X, type = "response")
+##Deciding threshold
+##Analyzing the threshold value
+performance75 <- FPR_TPR(pred.logistic>=0.75 , test_Y == "Yes")
+performance25 <- FPR_TPR(pred.logistic>=0.25 , test_Y == "Yes")
+performance50 <- FPR_TPR(pred.logistic>=0.50 , test_Y == "Yes")
+
+
+performanceTPR <- rbind("0.25" = performance25, "0.50" = performance50,"0.75" = performance75)
+performanceTPR
+
+write.csv(performanceTPR, file = "PerformanceTPRmodel.csv", row.names = TRUE)
+
+
+```
+
+
+
+```{r}
+
+##Lasso and Post-Lasso
+str(data)
+
+Mx<- model.matrix(Personal_Loan ~ .^2, data=data)[,-1]
+My<- data$Personal_Loan == "Yes"
+lasso <- glmnet(Mx,My, family="binomial")
+lassoCV <- cv.glmnet(Mx,My, family="binomial")
+
+plot(lasso)
+plot(lassoCV)
+
+num.features <- ncol(Mx)
+num.n <- nrow(Mx)
+num.target <- sum(My)
+w <- (num.target/num.n)*(1-(num.target/num.n))
+lambda.theory <- sqrt(w*log(num.features/0.05)/num.n)
+lassoTheory <- glmnet(Mx,My, family="binomial",lambda = lambda.theory)
+summary(lassoTheory)
+support(lassoTheory$beta)
+
+features.min <- support(lasso$beta[,which.min(lassoCV$cvm)])
+features.min <- support(lassoTheory$beta)
+length(features.min)
+data.min <- data.frame(Mx[,features.min],My)
+
+colnames(data.min)
+
+
+
+```
+
